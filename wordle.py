@@ -1,11 +1,8 @@
 from tqdm import tqdm
 import itertools
+import random
 
-def get_line(guess, answer, valid_letters, lookup):
-    key = (guess, answer)
-    if key in lookup:
-        return lookup[key]
-
+def get_line(guess, answer, valid_letters):
     line = []
     for i in range(len(guess)):
         letter = guess[i]
@@ -15,56 +12,48 @@ def get_line(guess, answer, valid_letters, lookup):
             line.append(1)
         else:
             line.append(0)
-    
-    lookup[key] = line
     return line
 
 
-def can_make_target_from_answer(answer, target, words, lookup):
+def can_make_target_from_answer(answer, target, words):
     valid_letters = set(list(answer))
-    guesses = []
-    for target_line in target:
-        guesses_before = len(guesses)
-        for guess in words:
-            resulting_line = get_line(guess, answer, valid_letters, lookup)
-            if resulting_line == target_line:
-                guesses.append(guess)
-                break
-        if len(guesses) == guesses_before:
-            return False
-    return True
+
+    for guess in words:
+        resulting_line = get_line(guess, answer, valid_letters)
+        if resulting_line == target:
+            #print(resulting_line, target)
+            return True
+    return False
+    
 
 def get_answer():
-    lookup = {}
+
     words_file = open("./words.txt")
     words = [line.strip() for line in words_file.readlines()]
+    random.shuffle(words)
     words_file.close()
 
-    total = 2**(25)
+    possible_with = []
 
-    target = [[0,0,0,0,0],
-            [0,0,0,0,0],
-            [0,0,0,0,0],
-            [0,0,0,0,0],
-            [0,0,0,0,0]]
+    for answer in tqdm(words):
+        made_it = True
+        for seq in itertools.product([0,1], repeat=5):
+            target = list(seq)
+            if not can_make_target_from_answer(answer, target, words):
+                #print(answer,"cannot make",target)
+                made_it = False
+                break
 
-    with tqdm(total=total) as pbar:
-        for seq in itertools.product([0,1], repeat=5*5):
-            for i in range(5*5):
-                target[i // 5][i % 5] = seq[i]
-            
-            made_it = False
-            for answer in words:
-                if can_make_target_from_answer(answer, target, words, lookup):
-                    made_it = True
-                    break
-            if not made_it:
-                return False
-            pbar.update(1)
+        if made_it:
+            possible_with.append(answer)
 
-    return True
+    return possible_with
 
 possible = get_answer()
 
-if not possible:
+words_file = open("./words.txt")
+words = [line.strip() for line in words_file.readlines()]
+if len(possible) > 0:
+    print("Possible with", len(possible),"out of",len(words),"words")
+else:
     print("Not possible!")
